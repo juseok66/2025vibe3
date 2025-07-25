@@ -1,40 +1,37 @@
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
+import urllib.parse
+import json
 
-# 설정
 st.set_page_config(page_title="📍 나만의 북마크 지도", layout="wide")
 st.title("📍 나만의 북마크 지도 만들기")
 
-# 기본 북마크 목록
+# 기본 북마크
 DEFAULT_BOOKMARKS = [
     {"name": "광화문", "lat": 37.5759, "lon": 126.9769},
     {"name": "서울시청", "lat": 37.5663, "lon": 126.9779},
-    {"name": "광주시청", "lat": 35.1595, "lon": 126.8526}
+    {"name": "광주시청", "lat": 35.1595, "lon": 126.8526},
 ]
+
+# URL에서 bookmarks 파라미터 확인
+query_bookmarks_raw = st.query_params.get("bookmarks", "")
+loaded_from_url = False
+if query_bookmarks_raw:
+    try:
+        decoded = urllib.parse.unquote(query_bookmarks_raw)
+        url_bookmarks = json.loads(decoded)
+        if isinstance(url_bookmarks, list):
+            st.session_state.bookmarks = url_bookmarks
+            loaded_from_url = True
+    except Exception as e:
+        st.warning("❌ 북마크 링크를 불러오는 데 실패했습니다.")
 
 # 세션 상태 초기화
 if "bookmarks" not in st.session_state:
-    st.session_state.bookmarks = []
+    st.session_state.bookmarks = DEFAULT_BOOKMARKS.copy()
 
-# 🚨 핵심: 첫 로딩 시 query param 검사 -> 다음 렌더링에서 북마크 적용
-if "default_loaded" not in st.session_state:
-    st.session_state.default_loaded = False
-    st.session_state.needs_reload = False  # 렌더링 1번 더 하기 위함
-
-# URL 파라미터 확인
-if not st.session_state.default_loaded:
-    if st.query_params.get("default") == "true":
-        st.session_state.bookmarks.extend(DEFAULT_BOOKMARKS)
-        st.session_state.default_loaded = True
-        st.session_state.needs_reload = True  # 강제 리렌더
-
-# 강제 리렌더링
-if st.session_state.needs_reload:
-    st.session_state.needs_reload = False
-    st.experimental_rerun()
-
-# 입력 폼
+# 북마크 추가 폼
 with st.form("bookmark_form"):
     name = st.text_input("장소 이름", placeholder="예: 한강공원")
     lat = st.number_input("위도 (Latitude)", format="%.6f")
@@ -53,10 +50,9 @@ if st.session_state.bookmarks:
     center_lat = st.session_state.bookmarks[-1]["lat"]
     center_lon = st.session_state.bookmarks[-1]["lon"]
 else:
-    center_lat = 37.5665
-    center_lon = 126.9780
+    center_lat, center_lon = 37.5665, 126.9780
 
-# Folium 지도 생성
+# 지도 생성
 m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
 
 # 마커 추가
@@ -64,27 +60,5 @@ for bm in st.session_state.bookmarks:
     folium.Marker(
         location=[bm["lat"], bm["lon"]],
         popup=bm["name"],
-        icon=folium.Icon(color="blue", icon="bookmark")
-    ).add_to(m)
+        icon=folium.Icon(color="blue",
 
-# 지도 출력
-st_folium(m, width=1000, height=600)
-
-# 북마크 목록 출력
-st.markdown("### 📌 현재 북마크 목록")
-if st.session_state.bookmarks:
-    for i, bm in enumerate(st.session_state.bookmarks, 1):
-        st.write(f"{i}. {bm['name']} ({bm['lat']}, {bm['lon']})")
-else:
-    st.info("북마크가 아직 없습니다.")
-
-# 초기화
-if st.button("🔄 북마크 전체 초기화"):
-    st.session_state.bookmarks.clear()
-    st.session_state.default_loaded = False
-    st.success("북마크가 초기화되었습니다!")
-
-# 안내
-st.markdown("---")
-st.markdown("🔗 자동 북마크 링크 예시:")
-st.code("http://localhost:8501/?default=true", language="url")
