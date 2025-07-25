@@ -10,6 +10,7 @@ def load_data():
     df.columns = df.columns.astype(str)
     df = df.rename(columns={df.columns[0]: "범죄대분류", df.columns[1]: "범죄유형"})
     df.fillna(method='ffill', inplace=True)
+    df["범죄유형"] = df["범죄유형"].replace({"성폭력(강간\u00a0포함)": "성폭력"})
     return df
 
 df = load_data()
@@ -37,7 +38,7 @@ if page == "주요 형법범죄":
     selected_types = st.multiselect("범죄유형을 선택하세요", 범죄유형_list, default=[범죄유형_list[0]])
 
     df_filtered = df_melted[(df_melted["범죄유형"].isin(selected_types)) & (df_melted["범죄대분류"] == "주요\u00a0형법범죄")]
-    
+
     fig = px.line(df_filtered, x="연도", y="범죄율", color="범죄유형", title="주요 형법범죄별 연도별 추이", markers=True)
     fig.update_layout(xaxis_title="연도", yaxis_title="범죄율 (인구 10만 명당)")
     st.plotly_chart(fig)
