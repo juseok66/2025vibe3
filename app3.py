@@ -15,6 +15,22 @@ def load_data():
 
 df = load_data()
 
+# 지역별 범죄 데이터 불러오기
+@st.cache_data
+def load_region_data():
+    xls_region = pd.ExcelFile("범죄발생_지역_20250725140807.xlsx")
+    df_region = xls_region.parse("데이터")
+    years = list(range(2012, 2024))
+    regions = df_region.iloc[0, 3:3+len(years)].tolist()
+    values = df_region.iloc[3:4+len(years)-1, 3:3+len(years)].copy()
+    values.columns = regions
+    values = values.T.reset_index()
+    values.columns = ["지역", "형법범죄율"]
+    values = values[values["지역"] != "계"]
+    return values
+
+df_region_chart = load_region_data()
+
 # 데이터 전처리
 value_vars = [col for col in df.columns if col.isdigit()]
 df_melted = df.melt(id_vars=["범죄대분류", "범죄유형"], value_vars=value_vars, 
@@ -23,7 +39,7 @@ df_melted["연도"] = df_melted["연도"].astype(int)
 df_melted.dropna(subset=["범죄율"], inplace=True)
 
 # 페이지 설정
-page = st.sidebar.radio("페이지 선택", ["전체 형법범죄", "주요 형법범죄"])
+page = st.sidebar.radio("페이지 선택", ["전체 형법범죄", "주요 형법범죄", "지역별 형법범죄"])
 
 if page == "전체 형법범죄":
     st.header("전체 형법범죄 (막대 그래프)")
@@ -32,7 +48,7 @@ if page == "전체 형법범죄":
     fig_total.update_layout(xaxis_title="연도", yaxis_title="범죄율 (인구 10만 명당)")
     st.plotly_chart(fig_total)
 
-if page == "주요 형법범죄":
+elif page == "주요 형법범죄":
     st.header("주요 형법범죄 (꺾은선 그래프)")
     범죄유형_list = df_melted[df_melted["범죄대분류"] == "주요\u00a0형법범죄"]["범죄유형"].unique()
     selected_types = st.multiselect("범죄유형을 선택하세요", 범죄유형_list, default=[범죄유형_list[0]])
@@ -42,3 +58,12 @@ if page == "주요 형법범죄":
     fig = px.line(df_filtered, x="연도", y="범죄율", color="범죄유형", title="주요 형법범죄별 연도별 추이", markers=True)
     fig.update_layout(xaxis_title="연도", yaxis_title="범죄율 (인구 10만 명당)")
     st.plotly_chart(fig)
+
+elif page == "지역별 형법범죄":
+    st.header("2012~2023년 지역별 형법범죄율 (인구 10만 명당)")
+    df_region_chart_sorted = df_region_chart.sort_values("형법범죄율", ascending=False)
+    fig_region = px.bar(df_region_chart_sorted, x="지역", y="형법범죄율",
+                        title="2012~2023년 지역별 형법범죄율 평균", color="형법범죄율",
+                        labels={"형법범죄율": "범죄율 (인구 10만 명당)"})
+    fig_region.update_layout(xaxis_title="지역", yaxis_title="범죄율 (인구 10만 명당)")
+    st.plotly_chart(fig_region)
