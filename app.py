@@ -60,5 +60,31 @@ for bm in st.session_state.bookmarks:
     folium.Marker(
         location=[bm["lat"], bm["lon"]],
         popup=bm["name"],
-        icon=folium.Icon(color="blue",
+        icon=folium.Icon(color="blue", icon="bookmark")
+    ).add_to(m)
 
+# 지도 출력
+st_folium(m, width=1000, height=600)
+
+# 북마크 리스트 출력
+st.markdown("### 📌 현재 북마크 목록")
+if st.session_state.bookmarks:
+    for i, bm in enumerate(st.session_state.bookmarks, 1):
+        st.write(f"{i}. {bm['name']} ({bm['lat']}, {bm['lon']})")
+else:
+    st.info("북마크가 아직 없습니다.")
+
+# 초기화 버튼
+if st.button("🔄 북마크 전체 초기화"):
+    st.session_state.bookmarks = []
+    st.success("북마크가 초기화되었습니다!")
+
+# 북마크 링크 공유
+st.markdown("---")
+st.markdown("🔗 이 북마크 구성을 공유하려면 아래 링크를 복사하세요:")
+
+bookmark_str = json.dumps(st.session_state.bookmarks)
+encoded = urllib.parse.quote(bookmark_str)
+full_link = f"{st.query_params.get_url()}?bookmarks={encoded}" if hasattr(st.query_params, "get_url") else f"?bookmarks={encoded}"
+st.code(full_link, language="url")
+st.caption("이 링크를 열면 현재 북마크가 그대로 로드됩니다.")
