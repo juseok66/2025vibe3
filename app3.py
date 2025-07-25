@@ -62,4 +62,3 @@ with tab:
             st.exception(e)
     else:
         st.info("⬆️ 좌측에서 형법범죄 통계 엑셀 파일을 업로드하세요.")
-
