@@ -35,9 +35,9 @@ if page == "주요 형법범죄":
     st.header("주요 형법범죄 (꺾은선 그래프)")
     범죄유형_list = df_melted[df_melted["범죄대분류"] == "주요\u00a0형법범죄"]["범죄유형"].unique()
     selected_types = st.multiselect("범죄유형을 선택하세요", 범죄유형_list, default=[범죄유형_list[0]])
+
+    df_filtered = df_melted[(df_melted["범죄유형"].isin(selected_types)) & (df_melted["범죄대분류"] == "주요\u00a0형법범죄")]
     
-    for crime in selected_types:
-        df_filtered = df_melted[(df_melted["범죄유형"] == crime)]
-        fig = px.line(df_filtered, x="연도", y="범죄율", title=f"연도별 {crime} 범죄율 추이", markers=True)
-        fig.update_layout(xaxis_title="연도", yaxis_title="범죄율 (인구 10만 명당)")
-        st.plotly_chart(fig)
+    fig = px.line(df_filtered, x="연도", y="범죄율", color="범죄유형", title="주요 형법범죄별 연도별 추이", markers=True)
+    fig.update_layout(xaxis_title="연도", yaxis_title="범죄율 (인구 10만 명당)")
+    st.plotly_chart(fig)
