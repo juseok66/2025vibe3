@@ -28,13 +28,13 @@ def load_region_data():
     records = []
     for i, year in enumerate(years):
         col_idx = 4 + i
-        for row in range(4, df_region.shape[0]):
+        for row in range(1, df_region.shape[0]):
             crime_type = df_region.iloc[row, 0]
-            if crime_type.strip() == "형법범 (건)":
+            if crime_type.strip() == "A/B×100,000 (건/10만명)":
                 for j, region in enumerate(df_region.iloc[0, 4:]):
-                    value = df_region.iloc[row+1, 4+j]  # 인구 10만명당 발생률
+                    value = df_region.iloc[row, 4+j]
                     if region != "계":
-                        records.append({"연도": year, "지역": region, "형법범죄율": value})
+                        records.append({"연도": year, "지역": region, "범죄율": value})
                 break
 
     df_region_chart = pd.DataFrame(records)
@@ -50,7 +50,7 @@ df_melted["연도"] = df_melted["연도"].astype(int)
 df_melted.dropna(subset=["범죄율"], inplace=True)
 
 # 페이지 설정
-page = st.sidebar.radio("페이지 선택", ["전체 형법범죄", "주요 형법범죄", "지역별 형법범죄"])
+page = st.sidebar.radio("페이지 선택", ["전체 형법범죄", "주요 형법범죄", "지역별 범죄율"])
 
 if page == "전체 형법범죄":
     st.header("전체 형법범죄 (막대 그래프)")
@@ -70,13 +70,13 @@ elif page == "주요 형법범죄":
     fig.update_layout(xaxis_title="연도", yaxis_title="범죄율 (인구 10만 명당)")
     st.plotly_chart(fig)
 
-elif page == "지역별 형법범죄":
-    st.header("2012~2023년 지역별 형법범죄율 (인구 10만 명당)")
-    region_avg = df_region_chart.groupby("지역")["형법범죄율"].mean().reset_index()
-    region_avg = region_avg.sort_values("형법범죄율", ascending=False)
+elif page == "지역별 범죄율":
+    st.header("2012~2023년 지역별 범죄율 (인구 10만 명당)")
+    region_avg = df_region_chart.groupby("지역")["범죄율"].mean().reset_index()
+    region_avg = region_avg.sort_values("범죄율", ascending=False)
 
-    fig_region = px.bar(region_avg, x="지역", y="형법범죄율",
-                        title="2012~2023년 지역별 형법범죄율 평균",
-                        labels={"형법범죄율": "범죄율 (인구 10만 명당)"})
+    fig_region = px.bar(region_avg, x="지역", y="범죄율",
+                        title="2012~2023년 지역별 범죄율 평균",
+                        labels={"범죄율": "범죄율 (인구 10만 명당)"})
     fig_region.update_layout(xaxis_title="지역", yaxis_title="범죄율 (인구 10만 명당)")
     st.plotly_chart(fig_region)
