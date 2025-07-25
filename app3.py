@@ -31,10 +31,10 @@ def load_region_data():
         for row in range(4, df_region.shape[0]):
             crime_type = df_region.iloc[row, 0]
             if crime_type.strip() == "형법범 (건)":
-                value = df_region.iloc[row+1, col_idx]  # 인구 10만명당 발생률
-                region = region_names[i]
-                if region != "계":
-                    records.append({"연도": year, "지역": region, "형법범죄율": value})
+                for j, region in enumerate(df_region.iloc[0, 4:]):
+                    value = df_region.iloc[row+1, 4+j]  # 인구 10만명당 발생률
+                    if region != "계":
+                        records.append({"연도": year, "지역": region, "형법범죄율": value})
                 break
 
     df_region_chart = pd.DataFrame(records)
