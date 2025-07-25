@@ -21,21 +21,19 @@ def load_region_data():
     xls_region = pd.ExcelFile("범죄발생_지역_20250725140807.xlsx")
     df_region = xls_region.parse("데이터")
 
-    # 연도별 데이터 추출
-    years = list(range(2012, 2024))
-    region_names = df_region.iloc[0, 4:4+len(years)].tolist()
+    # 2023년 데이터 추출
+    region_names = df_region.iloc[0, 4:].tolist()
 
     records = []
-    for i, year in enumerate(years):
-        col_idx = 4 + i
-        for row in range(1, df_region.shape[0]):
-            crime_type = df_region.iloc[row, 0]
-            if isinstance(crime_type, str) and "A/B" in crime_type:
-                for j, region in enumerate(df_region.iloc[0, 4:]):
-                    value = df_region.iloc[row, 4+j]
-                    if region != "계":
-                        records.append({"연도": year, "지역": region, "범죄율": value})
-                break
+    for row in range(1, df_region.shape[0]):
+        crime_type = df_region.iloc[row, 0]
+        if isinstance(crime_type, str) and "A/B" in crime_type:
+            for j, region in enumerate(region_names):
+                value = df_region.iloc[row, 4+j]
+                if region != "계":
+                    범죄분류 = df_region.iloc[row - 1, 0] if row >= 1 else "기타"
+                    records.append({"지역": region, "범죄율": value, "범죄분류": 범죄분류})
+            break
 
     df_region_chart = pd.DataFrame(records)
     return df_region_chart
@@ -55,7 +53,8 @@ page = st.sidebar.radio("페이지 선택", ["전체 형법범죄", "주요 형�
 if page == "전체 형법범죄":
     st.header("전체 형법범죄 (막대 그래프)")
     df_total = df_melted[df_melted["범죄대분류"] == "전체\u00a0형법범죄"]
-    fig_total = px.bar(df_total, x="연도", y="범죄율", title="전체 형법범죄 추이")
+    fig_total = px.bar(df_total, x="연도", y="범죄율", title="전체 형법범죄 추이",
+                       color="범죄대분류", color_discrete_map={"형법범": "#1f77b4", "특별법범": "#ff7f0e"})
     fig_total.update_layout(xaxis_title="연도", yaxis_title="범죄율 (인구 10만 명당)")
     st.plotly_chart(fig_total)
 
@@ -71,12 +70,12 @@ elif page == "주요 형법범죄":
     st.plotly_chart(fig)
 
 elif page == "지역별 범죄율":
-    st.header("2012~2023년 지역별 범죄율 (인구 10만 명당)")
-    region_avg = df_region_chart.groupby("지역")["범죄율"].mean().reset_index()
-    region_avg = region_avg.sort_values("범죄율", ascending=False)
+    st.header("2023년 지역별 범죄율 (인구 10만 명당)")
+    df_region_chart_sorted = df_region_chart.sort_values("범죄율", ascending=False)
 
-    fig_region = px.bar(region_avg, x="지역", y="범죄율",
-                        title="2012~2023년 지역별 범죄율 평균",
+    fig_region = px.bar(df_region_chart_sorted, x="지역", y="범죄율",
+                        title="2023년 지역별 범죄율",
+                        color="범죄분류",
                         labels={"범죄율": "범죄율 (인구 10만 명당)"})
     fig_region.update_layout(xaxis_title="지역", yaxis_title="범죄율 (인구 10만 명당)")
     st.plotly_chart(fig_region)
