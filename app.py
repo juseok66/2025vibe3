@@ -68,4 +68,23 @@ for bm in st.session_state.bookmarks:
     ).add_to(m)
 
 # 지도 출력
-st_folium(_
+st_folium(m, width=1000, height=600)
+
+# 북마크 목록 출력
+st.markdown("### 📌 현재 북마크 목록")
+if st.session_state.bookmarks:
+    for i, bm in enumerate(st.session_state.bookmarks, 1):
+        st.write(f"{i}. {bm['name']} ({bm['lat']}, {bm['lon']})")
+else:
+    st.info("북마크가 아직 없습니다.")
+
+# 초기화
+if st.button("🔄 북마크 전체 초기화"):
+    st.session_state.bookmarks.clear()
+    st.session_state.default_loaded = False
+    st.success("북마크가 초기화되었습니다!")
+
+# 안내
+st.markdown("---")
+st.markdown("🔗 자동 북마크 링크 예시:")
+st.code("http://localhost:8501/?default=true", language="url")
