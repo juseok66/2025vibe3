@@ -20,14 +20,25 @@ df = load_data()
 def load_region_data():
     xls_region = pd.ExcelFile("범죄발생_지역_20250725140807.xlsx")
     df_region = xls_region.parse("데이터")
+
+    # 연도별 데이터 추출
     years = list(range(2012, 2024))
-    regions = df_region.iloc[0, 3:3+len(years)].tolist()
-    values = df_region.iloc[3:4+len(years)-1, 3:3+len(years)].copy()
-    values.columns = regions
-    values = values.T.reset_index()
-    values.columns = ["지역", "형법범죄율"]
-    values = values[values["지역"] != "계"]
-    return values
+    region_names = df_region.iloc[0, 4:4+len(years)].tolist()
+
+    records = []
+    for i, year in enumerate(years):
+        col_idx = 4 + i
+        for row in range(4, df_region.shape[0]):
+            crime_type = df_region.iloc[row, 0]
+            if crime_type.strip() == "형법범 (건)":
+                value = df_region.iloc[row+1, col_idx]  # 인구 10만명당 발생률
+                region = region_names[i]
+                if region != "계":
+                    records.append({"연도": year, "지역": region, "형법범죄율": value})
+                break
+
+    df_region_chart = pd.DataFrame(records)
+    return df_region_chart
 
 df_region_chart = load_region_data()
 
@@ -61,8 +72,9 @@ elif page == "주요 형법범죄":
 
 elif page == "지역별 형법범죄":
     st.header("2012~2023년 지역별 형법범죄율 (인구 10만 명당)")
-    df_region_chart_sorted = df_region_chart.sort_values("형법범죄율", ascending=False)
-    fig_region = px.bar(df_region_chart_sorted, x="지역", y="형법범죄율",
+    region_avg = df_region_chart.groupby("지역")["형법범죄율"].mean().reset_index()
+    region_avg = region_avg.sort_values("형법범죄율", ascending=False)
+    fig_region = px.bar(region_avg, x="지역", y="형법범죄율",
                         title="2012~2023년 지역별 형법범죄율 평균", color="형법범죄율",
                         labels={"형법범죄율": "범죄율 (인구 10만 명당)"})
     fig_region.update_layout(xaxis_title="지역", yaxis_title="범죄율 (인구 10만 명당)")
