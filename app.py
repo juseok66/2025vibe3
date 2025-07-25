@@ -74,6 +74,7 @@ if st.button("🔄 북마크 전체 초기화"):
 
 # 사용 안내
 st.markdown("---")
-st.markdown("🔗 북마크 자동 등록 링크: ")
-st.code(f"{st.get_url()}?default=true", language="url")
+st.markdown("🔗 북마크 자동 등록 링크 예시:")
+st.code("http://localhost:8501/?default=true", language="url")
+st.caption("실제 배포 시에는 위 주소에서 'localhost' 부분을 당신의 URL로 바꾸세요.")
 
