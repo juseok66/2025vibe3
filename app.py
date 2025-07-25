@@ -13,14 +13,14 @@ DEFAULT_BOOKMARKS = [
     {"name": "광주시청", "lat": 35.1595, "lon": 126.8526}
 ]
 
-# URL 쿼리 파라미터 확인
-params = st.experimental_get_query_params()
-load_default = params.get("default", ["false"])[0].lower() == "true"
+# URL 파라미터 처리 (st.query_params는 앱 렌더 후 접근 가능)
+load_default = st.query_params.get("default") == "true"
 
 # 세션 상태 초기화
 if "bookmarks" not in st.session_state:
     st.session_state.bookmarks = []
 
+# 기본 북마크 불러오기 (단, 중복 방지)
 if load_default and not st.session_state.get("default_loaded"):
     st.session_state.bookmarks.extend(DEFAULT_BOOKMARKS)
     st.session_state.default_loaded = True  # 한 번만 추가되도록 설정
@@ -50,7 +50,7 @@ else:
 # Folium 지도 생성
 m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
 
-# 북마크 추가
+# 북마크 마커 추가
 for bm in st.session_state.bookmarks:
     folium.Marker(
         location=[bm["lat"], bm["lon"]],
@@ -75,7 +75,7 @@ if st.button("🔄 북마크 전체 초기화"):
     st.session_state.default_loaded = False
     st.success("북마크가 초기화되었습니다!")
 
-# 사용 안내
+# 링크 안내
 st.markdown("---")
 st.markdown("🔗 기본 북마크가 자동 등록되는 링크 예시:")
 st.code("http://localhost:8501/?default=true", language="url")
