@@ -49,9 +49,9 @@ df_melted["연도"] = df_melted["연도"].astype(int)
 df_melted.dropna(subset=["범죄율"], inplace=True)
 
 # 페이지 설정
-page = st.sidebar.radio("페이지 선택", ["전체 형법범죄", "주요 형법범죄", "지역별 범죄율"])
+page = st.sidebar.radio("페이지 선택", ["형법범죄 전체 보기", "지역별 범죄율"])
 
-if page == "전체 형법범죄":
+if page == "형법범죄 전체 보기":
     st.header("전체 형법범죄 (막대 그래프)")
     df_total = df_melted[df_melted["범죄대분류"] == "전체\u00a0형법범죄"]
     fig_total = px.bar(df_total, x="연도", y="범죄율", title="전체 형법범죄 추이",
@@ -59,7 +59,6 @@ if page == "전체 형법범죄":
     fig_total.update_layout(xaxis_title="연도", yaxis_title="범죄율 (인구 10만 명당)")
     st.plotly_chart(fig_total)
 
-elif page == "주요 형법범죄":
     st.header("주요 형법범죄 (꺾은선 그래프)")
     범죄유형_list = df_melted[df_melted["범죄대분류"] == "주요\u00a0형법범죄"]["범죄유형"].unique()
     selected_types = st.multiselect("범죄유형을 선택하세요", 범죄유형_list, default=[범죄유형_list[0]])
