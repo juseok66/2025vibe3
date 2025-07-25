@@ -1,72 +1,164 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from pandas.errors import EmptyDataError
 
-st.set_page_config(layout="wide")
-st.title("📊 범죄율 분석 대시보드")
+st.set_page_config(page_title="광종별 매장량 시각화", layout="wide")
+st.title("⛏️ 광종별 및 국가별 매장량 분석 + 형법범죄 통계 대시보드")
 
-uploaded_file = st.file_uploader("📁 범죄율 Excel 파일 업로드 (.xlsx)", type=["xlsx"])
+# ---------------- 파일 업로드 ----------------
+st.sidebar.header("📂 데이터 파일 업로드")
+uploaded_mineral = st.sidebar.file_uploader("광종별 매장량 (상위 5개국 기준)", type=["csv"], key="mineral")
+uploaded_country = st.sidebar.file_uploader("국가별 매장량 (전체 국가)", type=["csv"], key="country")
+uploaded_crime = st.sidebar.file_uploader("형법범죄 통계 엑셀 파일", type=["xlsx"], key="crime")
 
-if uploaded_file:
-    df_raw = pd.read_excel(uploaded_file, sheet_name=0)
+# ---------------- TAB 설정 ----------------
+tabs = st.tabs(["📈 광종별 매장량", "🌍 국가별 매장량", "📉 형법범죄 통계"])
 
-    # ✅ NaN 셀 병합처럼 위의 값으로 채움
-    df_raw["Unnamed: 0"] = df_raw["Unnamed: 0"].fillna(method="ffill")
+# ---------------- TAB 1: 광종별 매장량 ----------------
+with tabs[0]:
+    st.header("📊 광종별 매장량 (상위 5개국 기준)")
+    if uploaded_mineral:
+        try:
+            try:
+                df = pd.read_csv(uploaded_mineral, encoding="cp949")
+            except UnicodeDecodeError:
+                df = pd.read_csv(uploaded_mineral, encoding="utf-8")
 
-    # ✅ 범죄유형 생성 (예: "주요 형법범죄_살인")
-    df_raw["범죄유형"] = df_raw["Unnamed: 0"].str.strip() + "_" + df_raw["Unnamed: 1"].fillna("").str.strip()
+            df.columns = df.columns.str.strip()
+            for col in df.select_dtypes(include='object'):
+                df[col] = df[col].astype(str).str.strip()
 
-    # ✅ 불필요 열 제거 후 전치
-    df = df_raw.drop(columns=["Unnamed: 0", "Unnamed: 1"], errors="ignore")
-    df = df.set_index("범죄유형").T
-    df.index.name = "연도"
+            df["상위5개국 매장량 합계"] = pd.to_numeric(
+                df["상위5개국 매장량 합계"].astype(str).str.replace(",", ""),
+                errors="coerce"
+            )
+            df["단위"] = df["단위"].fillna("기타")
 
-    # ✅ 값 정제 (숫자형 변환)
-    df = df.applymap(lambda x: str(x).replace(",", "").replace("-", "").replace("없음", "").strip())
-    df = df.apply(pd.to_numeric, errors="coerce")
+            st.subheader("🔍 데이터 미리보기")
+            st.dataframe(df)
 
-    # ✅ 긴 형태로 변환
-    df_long = df.reset_index().melt(id_vars="연도", var_name="범죄유형", value_name="범죄율")
+            st.subheader("📊 그래프 옵션")
+            orientation = st.radio("그래프 방향", ["세로 막대", "가로 막대"])
+            filter_option = st.selectbox("데이터 범위", ["전체 보기", "상위 5개만", "하위 5개만", "직접 선택"])
 
-    # ✅ 유형 분리
-    전체형법 = [c for c in df.columns if "전체" in c]
-    주요형법 = [c for c in df.columns if "주요" in c and "전체" not in c]
+            if filter_option == "상위 5개만":
+                df_vis = df.nlargest(5, "상위5개국 매장량 합계")
+            elif filter_option == "하위 5개만":
+                df_vis = df.nsmallest(5, "상위5개국 매장량 합계")
+            elif filter_option == "직접 선택":
+                selected_items = st.multiselect("광종 선택", df["광종"].unique())
+                df_vis = df[df["광종"].isin(selected_items)]
+            else:
+                df_vis = df.copy()
 
-    tab1, tab2 = st.tabs(["📌 전체 형법범죄", "📌 주요형법범죄 비교"])
+            sort_order = st.radio("정렬 순서", ["매장량 높은 순", "매장량 낮은 순"])
+            ascending = True if sort_order == "매장량 낮은 순" else False
+            df_vis = df_vis.sort_values("상위5개국 매장량 합계", ascending=ascending)
 
-    # ---------------- TAB 1 ----------------
-    with tab1:
-        st.subheader("전체 형법범죄 연도별 변화")
-        for crime in 전체형법:
-            sub_df = df_long[df_long["범죄유형"] == crime]
-            fig = px.bar(sub_df, x="연도", y="범죄율", title=f"📌 {crime}",
-                         labels={"연도": "Year", "범죄율": "Crime Rate"})
-            fig.update_layout(xaxis_tickangle=-45)
+            st.subheader("📈 시각화 결과")
+            if orientation == "세로 막대":
+                fig = px.bar(df_vis, x="광종", y="상위5개국 매장량 합계", color="단위",
+                             title="광종별 상위 5개국 매장량 합계",
+                             labels={"상위5개국 매장량 합계": "매장량", "광종": "광물 종류"})
+                fig.update_layout(xaxis_tickangle=-45)
+            else:
+                fig = px.bar(df_vis, y="광종", x="상위5개국 매장량 합계", color="단위",
+                             orientation="h",
+                             title="광종별 상위 5개국 매장량 합계",
+                             labels={"상위5개국 매장량 합계": "매장량", "광종": "광물 종류"})
+                fig.update_layout(margin=dict(l=200))
+
             st.plotly_chart(fig, use_container_width=True)
 
-    # ---------------- TAB 2 ----------------
-    with tab2:
-        st.subheader("주요 형법범죄 비교")
-        options = st.multiselect("✅ 비교할 범죄 선택", 주요형법, default=주요형법[:3])
-        if options:
-            sub_df = df_long[df_long["범죄유형"].isin(options)]
-            fig2 = px.line(sub_df, x="연도", y="범죄율", color="범죄유형",
-                           title="주요 범죄 비교 (연도별 추이)",
-                           labels={"연도": "Year", "범죄율": "Crime Rate"})
-            fig2.update_layout(legend_title="범죄유형")
-            st.plotly_chart(fig2, use_container_width=True)
-        else:
-            st.warning("⛔ 하나 이상의 범죄를 선택해주세요.")
-else:
-    st.info("👆 왼쪽에서 Excel 파일을 업로드해주세요.")
+            st.subheader("🔎 선택한 광물 상세 정보")
+            selected_mineral = st.selectbox("광종 선택", df_vis["광종"].unique())
+            selected_row = df_vis[df_vis["광종"] == selected_mineral]
+            if not selected_row.empty:
+                st.markdown(f"""
+                **📌 {selected_mineral} 상세 정보**
+                - 매장량 합계: `{selected_row['상위5개국 매장량 합계'].values[0]:,}` {selected_row['단위'].values[0]}
+                """)
 
-# ✅ 숫자 변환 + 결측 제거
-df_melted["인원수"] = pd.to_numeric(df_melted["인원수"].astype(str).str.replace(",", "").replace("-", "0"), errors="coerce")
-df_melted.dropna(subset=["성별", "연령대", "인원수"], inplace=True)
+        except Exception as e:
+            st.error("❌ 오류 발생:")
+            st.exception(e)
+    else:
+        st.info("⬆️ 좌측에서 광종별 CSV 파일을 업로드하세요.")
 
-# ✅ 시각화
-fig = px.bar(df_melted, x="연령대", y="인원수", color="성별",
-             title="2022년 살인기수 범죄자 성별/연령대 분포",
-             labels={"연령대": "연령대", "인원수": "명", "성별": "성별"})
-fig.update_layout(xaxis_tickangle=-45)
-fig.show()
+# ---------------- TAB 2: 국가별 매장량 ----------------
+with tabs[1]:
+    st.header("🌍 국가별 광물 매장량 분석")
+    if uploaded_country:
+        try:
+            try:
+                df2 = pd.read_csv(uploaded_country, encoding="utf-8", sep=None, engine="python")
+            except UnicodeDecodeError:
+                df2 = pd.read_csv(uploaded_country, encoding="cp949", sep=None, engine="python")
+
+            df2 = df2.dropna(how='all')
+            df2.columns = df2.columns.str.strip()
+
+            if '광종' not in df2.columns or '국가' not in df2.columns or '매장량' not in df2.columns:
+                st.warning("❗ 필요한 열(광종, 국가, 매장량)이 누락된 파일입니다.")
+                st.stop()
+
+            df2["매장량"] = pd.to_numeric(df2["매장량"].astype(str).str.replace(",", ""), errors="coerce")
+            df2 = df2.dropna(subset=["광종", "국가", "매장량"])
+
+            if df2.empty:
+                st.warning("⚠️ 업로드된 CSV 파일에 데이터가 없습니다. 행이 0개입니다.")
+            else:
+                st.subheader("📊 데이터 미리보기")
+                st.dataframe(df2)
+
+                selected_mineral = st.selectbox("🔍 광종 선택", df2["광종"].unique())
+                df_mineral = df2[df2["광종"] == selected_mineral].copy()
+                df_top10 = df_mineral.nlargest(10, "매장량")
+
+                fig2 = px.bar(df_top10, x="국가", y="매장량", color="국가",
+                              title=f"{selected_mineral} 자원 국가별 매장량 Top 10",
+                              labels={"매장량": "매장량", "국가": "국가"})
+                fig2.update_layout(xaxis_tickangle=-45)
+                st.plotly_chart(fig2, use_container_width=True)
+
+        except EmptyDataError:
+            st.error("❌ CSV 파일이 비어 있어 읽을 수 없습니다.")
+        except Exception as e:
+            st.error("❌ 오류 발생:")
+            st.exception(e)
+    else:
+        st.info("⬆️ 좌측에서 국가별 CSV 파일을 업로드하세요.")
+
+# ---------------- TAB 3: 형법범죄 통계 ----------------
+with tabs[2]:
+    st.header("📉 형법범죄 통계 시각화")
+    if uploaded_crime:
+        try:
+            df_crime_raw = pd.read_excel(uploaded_crime, sheet_name=0, header=None)
+
+            # 헤더 추정 및 컬럼 설정
+            df_crime_raw.columns.values[0:2] = ["범죄분류", "범죄유형"]
+            df_crime_raw.columns = df_crime_raw.columns.astype(str).str.strip()
+            df_crime_raw["범죄유형"] = df_crime_raw["범죄유형"].fillna(method="ffill")
+
+            df_crime = df_crime_raw.melt(id_vars=["범죄분류", "범죄유형"], var_name="연도", value_name="범죄율")
+            df_crime["연도"] = pd.to_numeric(df_crime["연도"], errors="coerce")
+            df_crime = df_crime.dropna(subset=["연도", "범죄율"])
+
+            df_crime["범죄율"] = pd.to_numeric(df_crime["범죄율"].astype(str).str.replace(",", "").replace("-", "0"), errors="coerce")
+
+            # 주요 형법범죄만 필터링
+            df_major = df_crime[df_crime["범죄분류"].str.contains("주요", na=False)]
+
+            st.subheader("📈 주요 형법범죄 연도별 추이")
+            fig = px.line(df_major, x="연도", y="범죄율", color="범죄유형", markers=True,
+                         title="📊 주요 형법범죄 범죄율 추세")
+            fig.update_layout(yaxis_title="범죄율 (인구 10만 명당)", xaxis_title="연도")
+            st.plotly_chart(fig, use_container_width=True)
+
+        except Exception as e:
+            st.error("❌ 오류 발생:")
+            st.exception(e)
+    else:
+        st.info("⬆️ 좌측에서 형법범죄 엑셀 파일을 업로드하세요.")
