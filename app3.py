@@ -34,8 +34,7 @@ def load_region_data():
                 value = df_region.iloc[row+1, col_idx]  # 인구 10만명당 발생률
                 region = region_names[i]
                 if region != "계":
-                    gender = "남성" if "남" in region else ("여성" if "여" in region else None)
-                    records.append({"연도": year, "지역": region, "형법범죄율": value, "성별": gender})
+                    records.append({"연도": year, "지역": region, "형법범죄율": value})
                 break
 
     df_region_chart = pd.DataFrame(records)
@@ -76,14 +75,8 @@ elif page == "지역별 형법범죄":
     region_avg = df_region_chart.groupby("지역")["형법범죄율"].mean().reset_index()
     region_avg = region_avg.sort_values("형법범죄율", ascending=False)
 
-    # 성별 색상 설정
-    df_region_chart["성별"] = df_region_chart["지역"].apply(lambda x: "남성" if "남" in x else ("여성" if "여" in x else "기타"))
-    color_map = {"남성": "blue", "여성": "pink", "기타": "gray"}
-    region_avg = region_avg.merge(df_region_chart[["지역", "성별"]].drop_duplicates(), on="지역", how="left")
-
     fig_region = px.bar(region_avg, x="지역", y="형법범죄율",
                         title="2012~2023년 지역별 형법범죄율 평균",
-                        color="성별", color_discrete_map=color_map,
                         labels={"형법범죄율": "범죄율 (인구 10만 명당)"})
     fig_region.update_layout(xaxis_title="지역", yaxis_title="범죄율 (인구 10만 명당)")
     st.plotly_chart(fig_region)
