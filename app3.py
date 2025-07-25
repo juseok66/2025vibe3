@@ -30,7 +30,7 @@ def load_region_data():
         col_idx = 4 + i
         for row in range(1, df_region.shape[0]):
             crime_type = df_region.iloc[row, 0]
-            if crime_type.strip() == "A/B×100,000 (건/10만명)":
+            if isinstance(crime_type, str) and "A/B" in crime_type:
                 for j, region in enumerate(df_region.iloc[0, 4:]):
                     value = df_region.iloc[row, 4+j]
                     if region != "계":
