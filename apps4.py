@@ -49,6 +49,7 @@ df_melted["연도"] = df_melted["연도"].astype(int)
 df_melted.dropna(subset=["범죄율"], inplace=True)
 
 # 페이지 설정
+st.sidebar.title("대한민국 범죄 통계")
 page = st.sidebar.radio("페이지 선택", ["형법범죄 전체 보기", "지역별 범죄율"])
 
 if page == "형법범죄 전체 보기":
