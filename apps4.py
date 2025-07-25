@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -33,6 +32,7 @@ def load_region_data():
                 value = df_region.iloc[row, 4+j]
                 if region != "계":
                     범죄분류 = df_region.iloc[row - 1, 0] if row >= 1 else "기타"
+                    범죄분류 = 범죄분류.replace(" (건)", "").strip()
                     records.append({"지역": region, "범죄율": value, "범죄분류": 범죄분류})
             break
 
